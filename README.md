@@ -26,6 +26,8 @@ System Settings → Privacy & Security → Accessibility → enable Clipbook.
 Without it, ↩ still puts the item on your clipboard (paste manually with ⌘V).
 The hotkey and grid need no permission. If you rebuild and paste stops working, toggle Clipbook off/on in that list.
 
+Clipbook launches at login (enabled on first run; untick **Launch at Login** in its menu-bar menu to turn it off).
+
 ⇧⌘V is "Paste and Match Style" in many apps; Clipbook takes it over globally.
 
 ## Development
