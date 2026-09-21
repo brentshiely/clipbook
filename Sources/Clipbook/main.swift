@@ -11,6 +11,12 @@ MainActor.assumeIsolated {
         exit(0)
     }
 
+    // `Clipbook --icon out.png` renders the app icon (used by scripts/build-app.sh).
+    if let flag = args.firstIndex(of: "--icon"), args.indices.contains(flag + 1) {
+        renderAppIcon(to: args[flag + 1])
+        exit(0)
+    }
+
     let store = try! ClipStore(path: ClipStore.defaultPath())
     let app = NSApplication.shared
     let delegate = AppDelegate(store: store)
