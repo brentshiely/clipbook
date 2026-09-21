@@ -19,8 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        watcher = PasteboardWatcher { [store] payload in
-            do { try store.insert(payload) } catch { NSLog("Clipbook: insert failed: \(error)") }
+        watcher = PasteboardWatcher { [store] payload, date in
+            do { try store.insert(payload, at: date) } catch { NSLog("Clipbook: insert failed: \(error)") }
         }
         watcher.start()
 
@@ -92,6 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .text(let s): pb.setString(s, forType: .string)
         case .image(let png): pb.setData(png, forType: .png)
         case .files(let paths): pb.writeObjects(paths.map { URL(fileURLWithPath: $0) as NSURL })
+        case .video(let path, _): pb.writeObjects([URL(fileURLWithPath: path) as NSURL])
         }
         watcher.ignoreCurrentContents()   // pasting shouldn't reorder history
 

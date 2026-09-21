@@ -122,6 +122,7 @@ public final class ClipStore {
         case .text(let s): return ("text", s, nil)
         case .image(let d): return ("image", nil, d)
         case .files(let paths): return ("files", paths.joined(separator: "\n"), nil)
+        case .video(let path, let thumbnail): return ("video", path, thumbnail)
         }
     }
 
@@ -130,6 +131,9 @@ public final class ClipStore {
         case "text": return text.map { .text($0) }
         case "image": return data.map { .image($0) }
         case "files": return text.map { .files($0.components(separatedBy: "\n")) }
+        case "video":
+            guard let text, let data else { return nil }
+            return .video(path: text, thumbnail: data)
         default: return nil
         }
     }

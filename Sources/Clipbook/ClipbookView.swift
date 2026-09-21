@@ -5,10 +5,10 @@ import ClipbookCore
 enum Thumbnails {
     private static let cache = NSCache<NSNumber, NSImage>()
 
-    static func image(for id: Int64, png: Data, maxPixel: CGFloat) -> NSImage? {
+    static func image(for id: Int64, data: Data, maxPixel: CGFloat) -> NSImage? {
         let key = NSNumber(value: id)
         if let hit = cache.object(forKey: key) { return hit }
-        guard let source = CGImageSourceCreateWithData(png as CFData, nil) else { return nil }
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
@@ -66,8 +66,10 @@ struct TileView: View {
     }
 
     private var background: Color {
-        if case .image = item.payload { return .black }   // letterbox behind whole-image thumbnails
-        return Color(nsColor: .controlBackgroundColor)
+        switch item.payload {
+        case .image, .video: return .black       // letterbox behind whole-frame thumbnails
+        default: return Color(nsColor: .controlBackgroundColor)
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -75,10 +77,20 @@ struct TileView: View {
         case .text(let s):
             textTile(s)
         case .image(let png):
-            if let image = Thumbnails.image(for: item.id, png: png, maxPixel: size) {
+            if let image = Thumbnails.image(for: item.id, data: png, maxPixel: size) {
                 Image(nsImage: image).resizable().scaledToFit()   // the whole image, never cropped
             } else {
                 Image(systemName: "photo").font(.largeTitle).foregroundStyle(.white)
+            }
+        case .video(_, let thumbnail):
+            ZStack {
+                if let image = Thumbnails.image(for: item.id, data: thumbnail, maxPixel: size) {
+                    Image(nsImage: image).resizable().scaledToFit()
+                }
+                Image(systemName: "play.circle.fill")
+                    .font(.system(size: size * 0.28))
+                    .foregroundStyle(.white.opacity(0.92))
+                    .shadow(color: .black.opacity(0.5), radius: 4)
             }
         case .files(let paths):
             VStack(spacing: 6) {
@@ -133,6 +145,7 @@ struct ClipbookView: View {
                 }
             }
             .frame(width: gridWidth + 2 * Self.gridPadding, height: gridHeight + 2 * Self.gridPadding)
+            footer
         }
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 16).fill(Color(nsColor: .windowBackgroundColor)))
@@ -150,6 +163,27 @@ struct ClipbookView: View {
                 .font(.caption).foregroundStyle(.secondary)
         }
         .frame(width: gridWidth)
+    }
+
+    private var hasMoreThanOneScreen: Bool { model.totalCount > columns * rows }
+
+    /// Position + "more below" indicator; its space is always reserved so the panel keeps one size.
+    private var footer: some View {
+        let below = model.nav.itemsBelow(total: model.totalCount)
+        return HStack {
+            Text("Item \(model.nav.selected + 1) of \(model.totalCount.formatted())")
+                .foregroundStyle(.secondary)
+            Spacer()
+            if below > 0 {
+                Label("\(below.formatted()) more below", systemImage: "arrow.down")
+                    .foregroundStyle(Color.accentColor)
+            } else {
+                Text("End of history").foregroundStyle(.secondary)
+            }
+        }
+        .font(.callout.weight(.medium))
+        .frame(width: gridWidth, height: 18)
+        .opacity(hasMoreThanOneScreen ? 1 : 0)
     }
 
     private var grid: some View {

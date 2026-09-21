@@ -42,6 +42,9 @@ public struct GridNavigation: Equatable {
 
     public mutating func reset() { selected = 0 }
 
+    /// Items in the rows below the selected row, out of `total` items overall (for the footer indicator).
+    public func itemsBelow(total: Int) -> Int { max(0, total - (row + 1) * columns) }
+
     /// True when the selection is within `rows` rows of the end of what's loaded.
     public func isNearEnd(rows: Int = 3) -> Bool {
         row >= max(0, (count - 1) / columns - rows)

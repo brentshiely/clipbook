@@ -1,6 +1,6 @@
 # Clipbook
 
-A macOS clipboard history. Press **⇧⌘V** to open a grid of everything you've copied — 8 columns × 3 rows of large tiles, newest at the top left. Short text is blown up to fill its tile ("Cat" shouts), and images are shown whole, never cropped.
+A macOS clipboard history. Press **⇧⌘V** to open a grid of everything you've copied — 8 columns × 3 rows of large tiles, newest at the top left. Short text is blown up to fill its tile ("Cat" shouts), images are shown whole, never cropped, and copied video files show a frame from the video with a play button (the frame is saved, so it survives moving or deleting the file). When there are more than 24 items, a footer shows where you are and how many items sit below.
 
 | Key | Action |
 |---|---|

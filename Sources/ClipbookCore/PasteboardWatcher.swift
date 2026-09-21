@@ -10,11 +10,11 @@ public final class PasteboardWatcher {
     ]
 
     private let pasteboard: NSPasteboard
-    private let onCapture: (ClipPayload) -> Void
+    private let onCapture: (ClipPayload, Date) -> Void
     private var lastChangeCount: Int
     private var timer: Timer?
 
-    public init(pasteboard: NSPasteboard = .general, onCapture: @escaping (ClipPayload) -> Void) {
+    public init(pasteboard: NSPasteboard = .general, onCapture: @escaping (ClipPayload, Date) -> Void) {
         self.pasteboard = pasteboard
         self.onCapture = onCapture
         self.lastChangeCount = pasteboard.changeCount
@@ -38,7 +38,23 @@ public final class PasteboardWatcher {
     public func poll() {
         guard pasteboard.changeCount != lastChangeCount else { return }
         lastChangeCount = pasteboard.changeCount
-        if let payload = Self.payload(from: pasteboard) { onCapture(payload) }
+        guard let payload = Self.payload(from: pasteboard) else { return }
+        let date = Date()   // ordering follows when it was copied, not when its thumbnail finished
+
+        // A single copied video file gets a frame thumbnail, generated off the main thread.
+        if case .files(let paths) = payload, paths.count == 1, VideoThumbnail.isVideo(path: paths[0]) {
+            let path = paths[0]
+            let onCapture = self.onCapture
+            Task { @MainActor in
+                if let thumb = await VideoThumbnail.jpegThumbnail(forFileAt: path) {
+                    onCapture(.video(path: path, thumbnail: thumb), date)
+                } else {
+                    onCapture(payload, date)
+                }
+            }
+        } else {
+            onCapture(payload, date)
+        }
     }
 
     /// Files > image > text, skipping concealed items.

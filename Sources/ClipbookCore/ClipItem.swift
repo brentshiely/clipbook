@@ -4,6 +4,7 @@ public enum ClipPayload: Equatable {
     case text(String)
     case image(Data)      // PNG bytes
     case files([String])  // absolute paths
+    case video(path: String, thumbnail: Data)   // a single copied video file + a JPEG frame from it
 }
 
 public struct ClipItem: Equatable, Identifiable {

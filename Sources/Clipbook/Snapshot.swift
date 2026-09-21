@@ -28,14 +28,15 @@ func renderSnapshot(to path: String, rows: Int) {
                    "func greet() {\n  print(\"hi\")\n}", "Meeting notes: Q3 planning, budget review, hiring plan",
                    "42", "Photograph", "Buy oat milk, eggs, and coffee filters on the way home from the office tonight",
                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."]
-    let total = rows * GridNavigation.defaultColumns
+    let total = rows * GridNavigation.defaultColumns + 16      // more than a screenful, to show the footer
     for i in 0..<total {
         let date = Date(timeIntervalSince1970: Double(i))
         if i == total - 1 { try? store.insert(.text("Cat"), at: date); continue }          // newest: selected tile
         switch i % 7 {
         case 3:
             if let png = sampleScreenshotPNG(hue: CGFloat(i % 5) / 5) { try? store.insert(.image(png), at: date) }
-        case 5: try? store.insert(.files(["/Applications/Safari.app"]), at: date)
+        case 5:
+            if let png = sampleScreenshotPNG(hue: CGFloat(i % 5) / 5) { try? store.insert(.video(path: "/tmp/sample.mov", thumbnail: png), at: date) }
         default: try? store.insert(.text("\(samples[i % samples.count])"), at: date)
         }
     }
