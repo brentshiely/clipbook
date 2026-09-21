@@ -2,6 +2,20 @@ import AVFoundation
 import AppKit
 import UniformTypeIdentifiers
 
+public enum VideoBackfill {
+    /// Gives thumbnails to already-saved single video files. Returns how many were converted.
+    /// Safe to run on every launch: converted items no longer match, and missing or undecodable files are skipped.
+    @discardableResult
+    public static func run(on store: ClipStore) async -> Int {
+        var converted = 0
+        for candidate in (try? store.singleFileItems()) ?? [] where VideoThumbnail.isVideo(path: candidate.path) {
+            guard let thumbnail = await VideoThumbnail.jpegThumbnail(forFileAt: candidate.path) else { continue }
+            if (try? store.convertToVideo(id: candidate.id, path: candidate.path, thumbnail: thumbnail)) != nil { converted += 1 }
+        }
+        return converted
+    }
+}
+
 public enum VideoThumbnail {
     /// True when `path` is an existing file whose type is a movie.
     public static func isVideo(path: String) -> Bool {

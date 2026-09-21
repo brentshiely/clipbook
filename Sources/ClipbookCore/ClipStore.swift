@@ -85,6 +85,33 @@ public final class ClipStore {
         return items
     }
 
+    /// Items saved as a single copied file: candidates for video thumbnails.
+    public func singleFileItems() throws -> [(id: Int64, path: String)] {
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        try prepare("SELECT id, text FROM items WHERE kind = 'files' AND text NOT LIKE '%' || char(10) || '%'", &stmt)
+        var rows: [(id: Int64, path: String)] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            guard let text = sqlite3_column_text(stmt, 1) else { continue }
+            rows.append((sqlite3_column_int64(stmt, 0), String(cString: text)))
+        }
+        return rows
+    }
+
+    /// Turns a saved single-file item into a video item in place, keeping its id and date.
+    public func convertToVideo(id: Int64, path: String, thumbnail: Data) throws {
+        let (kind, text, data) = Self.columns(for: .video(path: path, thumbnail: thumbnail))
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        try prepare("UPDATE items SET kind = ?, text = ?, data = ?, hash = ? WHERE id = ? AND kind = 'files'", &stmt)
+        sqlite3_bind_text(stmt, 1, kind, -1, SQLITE_TRANSIENT)
+        sqlite3_bind_text(stmt, 2, text, -1, SQLITE_TRANSIENT)
+        _ = thumbnail.withUnsafeBytes { sqlite3_bind_blob(stmt, 3, $0.baseAddress, Int32(thumbnail.count), SQLITE_TRANSIENT) }
+        sqlite3_bind_text(stmt, 4, Self.hash(kind: kind, text: text, data: data), -1, SQLITE_TRANSIENT)
+        sqlite3_bind_int64(stmt, 5, id)
+        guard sqlite3_step(stmt) == SQLITE_DONE else { throw ClipStoreError.sqlFailed(lastError) }
+    }
+
     public func count() throws -> Int {
         var stmt: OpaquePointer?
         defer { sqlite3_finalize(stmt) }

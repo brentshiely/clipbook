@@ -110,3 +110,35 @@ final class VideoThumbnailTests: XCTestCase {
         XCTAssertEqual(GridNavigation(count: 10).itemsBelow(total: 10), 2)   // 10 items: 2 sit below row 0
     }
 }
+
+final class VideoBackfillTests: XCTestCase {
+    func testBackfillConvertsOnlySingleVideoFilesAndKeepsOrder() async throws {
+        let movie = try await makeTestMovie()
+        addTeardownBlock { try? FileManager.default.removeItem(atPath: movie) }
+        let dbPath = NSTemporaryDirectory() + "clipbook-test-\(UUID().uuidString).sqlite"
+        addTeardownBlock { try? FileManager.default.removeItem(atPath: dbPath) }
+        let store = try ClipStore(path: dbPath)
+
+        try store.insert(.files([movie]), at: Date(timeIntervalSince1970: 1))                       // old video: converts
+        try store.insert(.files(["/Applications/Safari.app"]), at: Date(timeIntervalSince1970: 2))  // not a video
+        try store.insert(.files([movie, "/tmp/other.mov"]), at: Date(timeIntervalSince1970: 3))     // several files: left alone
+        try store.insert(.files(["/nonexistent/gone.mov"]), at: Date(timeIntervalSince1970: 4))     // missing: skipped
+        try store.insert(.text("hello"), at: Date(timeIntervalSince1970: 5))
+
+        let converted = await VideoBackfill.run(on: store)
+        XCTAssertEqual(converted, 1)
+
+        let items = try store.fetch(limit: 10)          // newest first
+        XCTAssertEqual(items.count, 5)
+        guard case .video(let path, let thumb) = items[4].payload else { return XCTFail("oldest should now be a video") }
+        XCTAssertEqual(path, movie)
+        XCTAssertFalse(thumb.isEmpty)
+        XCTAssertEqual(items[4].createdAt, Date(timeIntervalSince1970: 1))     // kept its place in history
+        XCTAssertEqual(items[3].payload, .files(["/Applications/Safari.app"]))
+        XCTAssertEqual(items[2].payload, .files([movie, "/tmp/other.mov"]))
+        XCTAssertEqual(items[1].payload, .files(["/nonexistent/gone.mov"]))
+
+        let again = await VideoBackfill.run(on: store)
+        XCTAssertEqual(again, 0)                        // idempotent
+    }
+}

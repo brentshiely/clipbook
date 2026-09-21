@@ -34,6 +34,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         buildStatusItem()
         enableLaunchAtLoginOnFirstRun()
+
+        // Older copied videos (saved before thumbnails existed) get theirs now.
+        Task { @MainActor [store, model] in
+            if await VideoBackfill.run(on: store) > 0 { model.reload() }
+        }
     }
 
     // MARK: - Launch at login
