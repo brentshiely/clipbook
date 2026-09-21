@@ -82,6 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(open)
         menu.addItem(NSMenuItem(title: "Clear Clipbook…", action: #selector(clearClipbook), keyEquivalent: ""))
         menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Enable Auto-Paste…", action: #selector(enableAutoPaste), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin(_:)), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Quit Clipbook", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         for item in menu.items where item.action != #selector(NSApplication.terminate(_:)) { item.target = self }
@@ -158,7 +159,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.mainMenu = main
     }
 
+    /// Asks macOS for the Accessibility permission (needed to press ⌘V for you) under Clipbook's own name.
+    @objc private func enableAutoPaste() {
+        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
+        _ = AXIsProcessTrustedWithOptions(options)
+    }
+
     func menuWillOpen(_ menu: NSMenu) {
+        if let item = menu.items.first(where: { $0.action == #selector(enableAutoPaste) }) {
+            let trusted = AXIsProcessTrusted()
+            item.title = trusted ? "Auto-Paste is on" : "Enable Auto-Paste…"
+            item.state = trusted ? .on : .off
+            item.isEnabled = !trusted
+        }
         menu.items.first { $0.action == #selector(toggleLaunchAtLogin(_:)) }?.state =
             loginItem.status == .enabled ? .on : .off
     }

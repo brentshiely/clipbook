@@ -17,6 +17,13 @@ MainActor.assumeIsolated {
         exit(0)
     }
 
+    // `Clipbook --check-accessibility out.txt` reports whether macOS trusts this process (diagnostics).
+    if let flag = args.firstIndex(of: "--check-accessibility"), args.indices.contains(flag + 1) {
+        let report = "trusted=\(AXIsProcessTrusted())\npid=\(getpid())\n"
+        try? report.write(toFile: args[flag + 1], atomically: true, encoding: .utf8)
+        exit(0)
+    }
+
     let store = try! ClipStore(path: ClipStore.defaultPath())
     let app = NSApplication.shared
     let delegate = AppDelegate(store: store)
