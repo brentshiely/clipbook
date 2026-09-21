@@ -7,12 +7,13 @@ A macOS clipboard history. Press **⇧⌘V** to open a grid of everything you've
 | ← / → | Move within the row (wraps to the previous/next row at the edges) |
 | ↑ / ↓ | Move one full row |
 | ↩ | Paste the selected tile into the app you were using |
+| ⌫ | Delete the selected tile permanently |
 | ⌘⌫ | Clear the whole Clipbook (asks to confirm) |
 | esc | Close |
 
 Scrolling past row 3 loads older history — there's no 100-item cap and no retention limit until you clear it.
 
-Text, images and files are captured. Items marked concealed by password managers are skipped. Consecutive duplicates collapse. History lives in `~/Library/Application Support/Clipbook/history.sqlite` and never leaves your Mac.
+Text, images and files are captured. Copies from password managers are never saved: items flagged as concealed are skipped, and so is anything copied while a known password-manager app (1Password, Bitwarden, Apple Passwords, KeePassXC and others) is in front. ⌫ deletes the selected tile permanently (its bytes are overwritten in the database file), and ⌘⌫ clears everything. Consecutive duplicates collapse. History lives in `~/Library/Application Support/Clipbook/history.sqlite` and never leaves your Mac.
 
 ## Build & install
 

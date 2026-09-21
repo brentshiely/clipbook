@@ -159,7 +159,7 @@ struct ClipbookView: View {
             Text("\(model.totalCount.formatted()) item\(model.totalCount == 1 ? "" : "s")")
                 .foregroundStyle(.secondary)
             Spacer()
-            Text("←↑↓→ move   ↩ paste   ⌘⌫ clear   esc close")
+            Text("←↑↓→ move   ↩ paste   ⌫ delete   ⌘⌫ clear all   esc close")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .frame(width: gridWidth)

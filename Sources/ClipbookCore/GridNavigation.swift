@@ -42,6 +42,9 @@ public struct GridNavigation: Equatable {
 
     public mutating func reset() { selected = 0 }
 
+    /// After items are removed: keep the selection on a real tile (the last one if it was the end).
+    public mutating func clampToCount() { selected = count > 0 ? min(selected, count - 1) : 0 }
+
     /// Items in the rows below the selected row, out of `total` items overall (for the footer indicator).
     public func itemsBelow(total: Int) -> Int { max(0, total - (row + 1) * columns) }
 

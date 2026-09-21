@@ -56,7 +56,7 @@ final class ClipStoreTests: XCTestCase {
     func testWatcherCapturesTextAndSkipsConcealed() {
         let pb = NSPasteboard(name: NSPasteboard.Name("clipbook-test-\(UUID().uuidString)"))
         var captured: [ClipPayload] = []
-        let watcher = PasteboardWatcher(pasteboard: pb) { payload, _ in captured.append(payload) }
+        let watcher = PasteboardWatcher(pasteboard: pb, frontmostBundleID: { nil }) { payload, _ in captured.append(payload) }
 
         pb.clearContents()
         pb.setString("copied text", forType: .string)

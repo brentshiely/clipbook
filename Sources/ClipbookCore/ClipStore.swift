@@ -17,6 +17,8 @@ public final class ClipStore {
         if sqlite3_open(path, &db) != SQLITE_OK {
             throw ClipStoreError.openFailed(String(cString: sqlite3_errmsg(db)))
         }
+        // Deleted content is overwritten in the file, not just unlinked, so it can't be recovered from disk.
+        try exec("PRAGMA secure_delete = ON;")
         try exec("""
             CREATE TABLE IF NOT EXISTS items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,6 +120,15 @@ public final class ClipStore {
         try prepare("SELECT COUNT(*) FROM items", &stmt)
         guard sqlite3_step(stmt) == SQLITE_ROW else { throw ClipStoreError.sqlFailed(lastError) }
         return Int(sqlite3_column_int64(stmt, 0))
+    }
+
+    /// Permanently removes one item (its bytes are overwritten in the database file).
+    public func delete(id: Int64) throws {
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        try prepare("DELETE FROM items WHERE id = ?", &stmt)
+        sqlite3_bind_int64(stmt, 1, id)
+        guard sqlite3_step(stmt) == SQLITE_DONE else { throw ClipStoreError.sqlFailed(lastError) }
     }
 
     public func clear() throws {

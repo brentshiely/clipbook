@@ -40,6 +40,16 @@ final class ClipbookViewModel: ObservableObject {
         if let item = selectedItem { onPaste?(item) }
     }
 
+    /// ⌫ removes the selected tile for good (the row is overwritten in the database).
+    func deleteSelected() {
+        guard let item = selectedItem else { return }
+        do { try store.delete(id: item.id) } catch { NSLog("Clipbook: delete failed: \(error)"); return }
+        items.removeAll { $0.id == item.id }
+        totalCount = max(0, totalCount - 1)
+        nav.count = items.count
+        nav.clampToCount()
+    }
+
     func clearAll() {
         try? store.clear()
         reload()
@@ -63,6 +73,7 @@ final class ClipbookViewModel: ObservableObject {
         case 36, 76: pasteSelected()
         case 53: onClose?()
         case 51 where modifiers.contains(.command): if totalCount > 0 { confirmingClear = true }
+        case 51, 117: deleteSelected()                  // delete / forward delete
         default: return false
         }
         return true

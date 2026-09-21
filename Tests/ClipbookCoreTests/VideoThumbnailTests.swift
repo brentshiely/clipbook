@@ -81,7 +81,7 @@ final class VideoThumbnailTests: XCTestCase {
         let pb = NSPasteboard(name: NSPasteboard.Name("clipbook-test-\(UUID().uuidString)"))
         let captured = expectation(description: "video captured")
         var result: ClipPayload?
-        let watcher = PasteboardWatcher(pasteboard: pb) { payload, _ in result = payload; captured.fulfill() }
+        let watcher = PasteboardWatcher(pasteboard: pb, frontmostBundleID: { nil }) { payload, _ in result = payload; captured.fulfill() }
 
         pb.clearContents()
         pb.writeObjects([URL(fileURLWithPath: movie) as NSURL])
