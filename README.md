@@ -1,6 +1,6 @@
 # Clipbook
 
-A macOS clipboard history. Press **⇧⌘V** to open a 10 × 10 tile grid of everything you've copied, newest at the top left.
+A macOS clipboard history. Press **⇧⌘V** to open a grid of everything you've copied — 8 columns × 3 rows of large tiles, newest at the top left. Short text is blown up to fill its tile ("Cat" shouts), and images are shown whole, never cropped.
 
 | Key | Action |
 |---|---|
@@ -10,7 +10,7 @@ A macOS clipboard history. Press **⇧⌘V** to open a 10 × 10 tile grid of eve
 | ⌘⌫ | Clear the whole Clipbook (asks to confirm) |
 | esc | Close |
 
-Scrolling past row 10 loads older history — there's no 100-item cap and no retention limit until you clear it.
+Scrolling past row 3 loads older history — there's no 100-item cap and no retention limit until you clear it.
 
 Text, images and files are captured. Items marked concealed by password managers are skipped. Consecutive duplicates collapse. History lives in `~/Library/Application Support/Clipbook/history.sqlite` and never leaves your Mac.
 

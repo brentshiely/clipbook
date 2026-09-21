@@ -2,6 +2,14 @@ import XCTest
 @testable import ClipbookCore
 
 final class GridNavigationTests: XCTestCase {
+    func testDefaultGridIsEightColumnsByThreeRows() {
+        var nav = GridNavigation(count: 100)
+        XCTAssertEqual(nav.columns, 8)
+        XCTAssertEqual(GridNavigation.visibleRows, 3)
+        nav.move(.down)
+        XCTAssertEqual(nav.selected, 8)     // down moves exactly one 8-wide row
+    }
+
     func testStartsOnNewestTile() {
         XCTAssertEqual(GridNavigation(count: 5).selected, 0)
     }

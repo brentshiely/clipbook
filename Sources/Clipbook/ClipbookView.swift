@@ -21,6 +21,34 @@ enum Thumbnails {
     }
 }
 
+/// Picks the largest font size at which `text` fits the box without breaking words mid-word,
+/// so a single short word fills the tile and long text steps down.
+enum TextFit {
+    static func fontSize(for text: String, in box: CGSize, maxSize: CGFloat, minSize: CGFloat) -> CGFloat {
+        let words = text.split(whereSeparator: \.isWhitespace).map(String.init)
+
+        func fits(_ size: CGFloat) -> Bool {
+            let font = NSFont.systemFont(ofSize: size, weight: .semibold)
+            let attrs: [NSAttributedString.Key: Any] = [.font: font]
+            for word in words where (word as NSString).size(withAttributes: attrs).width > box.width { return false }
+            let rect = (text as NSString).boundingRect(
+                with: NSSize(width: box.width, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: attrs
+            )
+            return ceil(rect.height) <= box.height
+        }
+
+        if fits(maxSize) { return maxSize }
+        var low = minSize, high = maxSize
+        for _ in 0..<10 {
+            let mid = (low + high) / 2
+            if fits(mid) { low = mid } else { high = mid }
+        }
+        return floor(low)
+    }
+}
+
 struct TileView: View {
     let item: ClipItem
     let size: CGFloat
@@ -29,39 +57,57 @@ struct TileView: View {
     var body: some View {
         content
             .frame(width: size, height: size)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .background(RoundedRectangle(cornerRadius: 12).fill(background))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(selected ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: selected ? 3 : 1)
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(selected ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: selected ? 4 : 1)
             )
+    }
+
+    private var background: Color {
+        if case .image = item.payload { return .black }   // letterbox behind whole-image thumbnails
+        return Color(nsColor: .controlBackgroundColor)
     }
 
     @ViewBuilder private var content: some View {
         switch item.payload {
         case .text(let s):
-            Text(String(s.prefix(160)))
-                .font(.system(size: max(8, size / 9)))
-                .lineLimit(7)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(6)
+            textTile(s)
         case .image(let png):
             if let image = Thumbnails.image(for: item.id, png: png, maxPixel: size) {
-                Image(nsImage: image).resizable().scaledToFill()
+                Image(nsImage: image).resizable().scaledToFit()   // the whole image, never cropped
             } else {
-                Image(systemName: "photo").font(.title)
+                Image(systemName: "photo").font(.largeTitle).foregroundStyle(.white)
             }
         case .files(let paths):
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 Image(nsImage: NSWorkspace.shared.icon(forFile: paths[0]))
-                    .resizable().frame(width: size * 0.4, height: size * 0.4)
+                    .resizable().frame(width: size * 0.5, height: size * 0.5)
                 Text((paths[0] as NSString).lastPathComponent + (paths.count > 1 ? " +\(paths.count - 1)" : ""))
-                    .font(.system(size: max(8, size / 10)))
+                    .font(.system(size: max(11, size / 9), weight: .medium))
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
             }
-            .padding(4)
+            .padding(8)
+        }
+    }
+
+    @ViewBuilder private func textTile(_ raw: String) -> some View {
+        let text = String(raw.prefix(240)).trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.isEmpty {
+            Text("(blank)").font(.system(size: 14)).foregroundStyle(.secondary)
+        } else {
+            let inset = size * 0.08
+            let box = CGSize(width: size - 2 * inset, height: size - 2 * inset)
+            let fontSize = TextFit.fontSize(for: text, in: box, maxSize: size * 0.5, minSize: 12)
+            let singleWord = text.rangeOfCharacter(from: .whitespacesAndNewlines) == nil
+            let big = singleWord || fontSize >= size * 0.2
+            Text(text)
+                .font(.system(size: fontSize, weight: .semibold))
+                .lineLimit(max(1, Int(box.height / (fontSize * 1.2))))
+                .multilineTextAlignment(big ? .center : .leading)
+                .frame(width: box.width, height: box.height, alignment: big ? .center : .topLeading)
         }
     }
 }
@@ -69,11 +115,13 @@ struct TileView: View {
 struct ClipbookView: View {
     @ObservedObject var model: ClipbookViewModel
     let tileSize: CGFloat
-    static let spacing: CGFloat = 6
-    static let columns = 10
+    static let spacing: CGFloat = 8
+    static let gridPadding: CGFloat = 4     // room for the selection outline so scrolling doesn't clip it
 
-    private var gridSide: CGFloat { CGFloat(Self.columns) * tileSize + CGFloat(Self.columns - 1) * Self.spacing }
-    private var gridHeight: CGFloat { 10 * tileSize + 9 * Self.spacing }
+    private var columns: Int { GridNavigation.defaultColumns }
+    private var rows: Int { GridNavigation.visibleRows }
+    private var gridWidth: CGFloat { CGFloat(columns) * tileSize + CGFloat(columns - 1) * Self.spacing }
+    private var gridHeight: CGFloat { CGFloat(rows) * tileSize + CGFloat(rows - 1) * Self.spacing }
 
     var body: some View {
         VStack(spacing: 10) {
@@ -84,7 +132,7 @@ struct ClipbookView: View {
                     Text("Nothing copied yet").font(.title3).foregroundStyle(.secondary)
                 }
             }
-            .frame(width: gridSide, height: gridHeight)
+            .frame(width: gridWidth + 2 * Self.gridPadding, height: gridHeight + 2 * Self.gridPadding)
         }
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 16).fill(Color(nsColor: .windowBackgroundColor)))
@@ -101,20 +149,21 @@ struct ClipbookView: View {
             Text("←↑↓→ move   ↩ paste   ⌘⌫ clear   esc close")
                 .font(.caption).foregroundStyle(.secondary)
         }
-        .frame(width: gridSide)
+        .frame(width: gridWidth)
     }
 
     private var grid: some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVGrid(
-                    columns: Array(repeating: GridItem(.fixed(tileSize), spacing: Self.spacing), count: Self.columns),
+                    columns: Array(repeating: GridItem(.fixed(tileSize), spacing: Self.spacing), count: columns),
                     spacing: Self.spacing
                 ) {
                     ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
                         TileView(item: item, size: tileSize, selected: index == model.nav.selected)
                     }
                 }
+                .padding(Self.gridPadding)
             }
             .onChange(of: model.nav.selected) { _, _ in
                 if let id = model.selectedItem?.id { proxy.scrollTo(id) }

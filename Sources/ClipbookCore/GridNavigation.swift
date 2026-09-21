@@ -5,11 +5,15 @@ public enum GridMove { case left, right, up, down }
 /// Selection logic for the tile grid. Index 0 is the newest item (top left);
 /// tiles read left to right, then down one row.
 public struct GridNavigation: Equatable {
+    /// v1.1: 8 columns x 3 visible rows so each tile is large enough to read.
+    public static let defaultColumns = 8
+    public static let visibleRows = 3
+
     public let columns: Int
     public private(set) var selected: Int = 0
     public var count: Int
 
-    public init(columns: Int = 10, count: Int) {
+    public init(columns: Int = GridNavigation.defaultColumns, count: Int) {
         self.columns = columns
         self.count = count
     }

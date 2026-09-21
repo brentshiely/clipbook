@@ -4,3 +4,6 @@
 DerivedData/
 build/
 .DS_Store
+
+# Local drafts, not part of the project
+docs/linkedin-article/

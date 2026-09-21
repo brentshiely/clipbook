@@ -7,7 +7,7 @@ MainActor.assumeIsolated {
 
     // `Clipbook --snapshot out.png` renders the grid over seeded sample data (for layout checks).
     if let flag = args.firstIndex(of: "--snapshot"), args.indices.contains(flag + 1) {
-        renderSnapshot(to: args[flag + 1], rows: args.contains("--long") ? 14 : 10)
+        renderSnapshot(to: args[flag + 1], rows: GridNavigation.visibleRows)
         exit(0)
     }
 

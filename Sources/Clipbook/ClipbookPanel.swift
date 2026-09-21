@@ -27,9 +27,11 @@ final class ClipbookPanelController {
 
     static func tileSize(for screen: NSScreen?) -> CGFloat {
         guard let frame = screen?.visibleFrame else { return 64 }
-        let byWidth = (frame.width * 0.92 - 32 - 9 * ClipbookView.spacing) / 10
-        let byHeight = (frame.height * 0.92 - 32 - 40 - 9 * ClipbookView.spacing) / 10
-        return max(40, floor(min(96, byWidth, byHeight)))
+        let cols = CGFloat(GridNavigation.defaultColumns), rows = CGFloat(GridNavigation.visibleRows)
+        let pad = 32 + 2 * ClipbookView.gridPadding
+        let byWidth = (frame.width * 0.92 - pad - (cols - 1) * ClipbookView.spacing) / cols
+        let byHeight = (frame.height * 0.92 - pad - 40 - (rows - 1) * ClipbookView.spacing) / rows
+        return max(80, floor(min(220, byWidth, byHeight)))
     }
 
     init(model: ClipbookViewModel) {
