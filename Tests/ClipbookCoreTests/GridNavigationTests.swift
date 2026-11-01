@@ -67,4 +67,13 @@ final class GridNavigationTests: XCTestCase {
         for _ in 0..<16 { nav.move(.down) }                 // row 16
         XCTAssertTrue(nav.isNearEnd())
     }
+
+    func testMouseSelectionJumpsToTileAndIgnoresOutOfRange() {
+        var nav = GridNavigation(count: 30)
+        nav.select(19)
+        XCTAssertEqual(nav.selected, 19)
+        nav.select(30)
+        nav.select(-1)
+        XCTAssertEqual(nav.selected, 19)
+    }
 }

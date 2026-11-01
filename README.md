@@ -6,7 +6,11 @@ A macOS clipboard history. Press **⇧⌘V** to open a grid of everything you've
 |---|---|
 | ← / → | Move within the row (wraps to the previous/next row at the edges) |
 | ↑ / ↓ | Move one full row |
-| ↩ | Paste the selected tile into the app you were using |
+| ↩ or double-click | Paste the selected tile into the app you were using |
+| ⌘S | Save the selected image as a PNG file in `~/Pictures/Clipbook` and show it in Finder |
+| hover | A tooltip lists the commands available for that tile |
+| click | Select a tile (the scroll wheel scrolls the grid) |
+| space | Play the selected video inside Clipbook (space pauses, ←/→ seek 5 s, esc returns to the grid) |
 | ⌫ | Delete the selected tile permanently |
 | ⌘⌫ | Clear the whole Clipbook (asks to confirm) |
 | esc | Close |
@@ -39,3 +43,7 @@ swift test                                   # store, dedupe, paging, grid navig
 ```
 
 Layout: `Sources/ClipbookCore` (SQLite store, pasteboard watcher, grid navigation — no UI), `Sources/Clipbook` (menu bar, hotkey, panel, SwiftUI grid).
+
+## Adding a command
+
+Add the key handling in `ClipbookViewModel.handleKey`, then list it in `Sources/ClipbookCore/TileActions.swift` so the hover tooltip shows it.

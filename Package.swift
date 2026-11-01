@@ -11,7 +11,8 @@ let package = Package(
         ),
         .executableTarget(
             name: "Clipbook",
-            dependencies: ["ClipbookCore"]
+            dependencies: ["ClipbookCore"],
+            linkerSettings: [.linkedFramework("AVKit")]     // SwiftUI's VideoPlayer needs it loaded at runtime
         ),
         .testTarget(
             name: "ClipbookCoreTests",

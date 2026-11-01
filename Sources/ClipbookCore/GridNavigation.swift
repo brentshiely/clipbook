@@ -40,6 +40,11 @@ public struct GridNavigation: Equatable {
         }
     }
 
+    /// Mouse selection: jump straight to a tile; out-of-range indexes are ignored.
+    public mutating func select(_ index: Int) {
+        if index >= 0 && index < count { selected = index }
+    }
+
     public mutating func reset() { selected = 0 }
 
     /// After items are removed: keep the selection on a real tile (the last one if it was the end).

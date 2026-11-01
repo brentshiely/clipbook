@@ -1,4 +1,5 @@
 import SwiftUI
+import AVKit
 import ImageIO
 import ClipbookCore
 
@@ -124,6 +125,22 @@ struct TileView: View {
     }
 }
 
+/// AppKit's player view, used directly: the controls are the standard inline ones.
+struct PlayerView: NSViewRepresentable {
+    let player: AVPlayer
+
+    func makeNSView(context: Context) -> AVPlayerView {
+        let view = AVPlayerView()
+        view.controlsStyle = .inline
+        view.player = player
+        return view
+    }
+
+    func updateNSView(_ view: AVPlayerView, context: Context) {
+        if view.player !== player { view.player = player }
+    }
+}
+
 struct ClipbookView: View {
     @ObservedObject var model: ClipbookViewModel
     let tileSize: CGFloat
@@ -150,6 +167,17 @@ struct ClipbookView: View {
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 16).fill(Color(nsColor: .windowBackgroundColor)))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.15)))
+        .overlay { if model.isPlaying { playerOverlay } }
+        .overlay(alignment: .bottom) {
+            if let notice = model.notice {
+                Text(notice)
+                    .font(.callout.weight(.medium))
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(Capsule().fill(.black.opacity(0.8)))
+                    .foregroundStyle(.white)
+                    .padding(.bottom, 12)
+            }
+        }
         .overlay { if model.confirmingClear { clearDialog } }
     }
 
@@ -159,7 +187,9 @@ struct ClipbookView: View {
             Text("\(model.totalCount.formatted()) item\(model.totalCount == 1 ? "" : "s")")
                 .foregroundStyle(.secondary)
             Spacer()
-            Text("←↑↓→ move   ↩ paste   ⌫ delete   ⌘⌫ clear all   esc close")
+            Text(model.isPlaying
+                 ? "space pause   ←→ seek 5s   ↩ paste   esc back"
+                 : "←↑↓→ or click   space play video   ⌘S save image   ↩ or double-click paste   ⌫ delete   ⌘⌫ clear all   esc close")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .frame(width: gridWidth)
@@ -195,12 +225,35 @@ struct ClipbookView: View {
                 ) {
                     ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
                         TileView(item: item, size: tileSize, selected: index == model.nav.selected)
+                            .contentShape(Rectangle())
+                            .help(TileActions.tooltip(for: item.payload))
+                            .onTapGesture(count: 2) { model.doubleClick(index: index) }
+                            .onTapGesture { model.click(index: index) }
                     }
                 }
                 .padding(Self.gridPadding)
             }
             .onChange(of: model.nav.selected) { _, _ in
                 if let id = model.selectedItem?.id { proxy.scrollTo(id) }
+            }
+        }
+    }
+
+    private var playerOverlay: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16).fill(.black)
+            if let player = model.player {
+                PlayerView(player: player)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(12)
+            } else if let message = model.playbackError {
+                VStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle").font(.largeTitle)
+                    Text(message).multilineTextAlignment(.center)
+                    Text("esc back").foregroundStyle(.secondary)
+                }
+                .foregroundStyle(.white)
+                .padding(40)
             }
         }
     }

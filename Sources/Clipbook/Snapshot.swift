@@ -53,3 +53,32 @@ func renderSnapshot(to path: String, rows: Int) {
     try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
     print("wrote \(path) (\(Int(host.bounds.width))x\(Int(host.bounds.height)), tile \(Int(tile)))")
 }
+
+/// `Clipbook --snapshot-play out.png video.mov`: opens the in-panel player on a real file and renders it.
+@MainActor
+func renderPlayerSnapshot(to path: String, video: String) {
+    let dbPath = NSTemporaryDirectory() + "clipbook-snapshot-\(UUID().uuidString).sqlite"
+    defer { try? FileManager.default.removeItem(atPath: dbPath) }
+    let store = try! ClipStore(path: dbPath)
+    _ = try? store.insert(.text("Hello, world"), at: Date(timeIntervalSince1970: 1))
+    if let png = sampleScreenshotPNG(hue: 0.6) {
+        _ = try? store.insert(.video(path: video, thumbnail: png), at: Date(timeIntervalSince1970: 2))
+    }
+    let model = ClipbookViewModel(store: store)
+    model.reload()
+    model.playSelected()
+    let tile = ClipbookPanelController.tileSize(for: NSScreen.main)
+    let host = NSHostingView(rootView: ClipbookView(model: model, tileSize: tile))
+    let window = NSWindow(contentRect: NSRect(origin: .zero, size: host.fittingSize), styleMask: [.borderless],
+                          backing: .buffered, defer: false)
+    window.contentView = host
+    window.orderFrontRegardless()
+    RunLoop.main.run(until: Date().addingTimeInterval(2))      // let the player load a frame
+    guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { exit(1) }
+    host.cacheDisplay(in: host.bounds, to: rep)
+    try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+    if let p = model.player, let item = p.currentItem {
+        print("status=\(item.status.rawValue) rate=\(p.rate) time=\(String(format: "%.2f", p.currentTime().seconds)) size=\(item.presentationSize)")
+    }
+    print("playing=\(model.player != nil) error=\(model.playbackError ?? "none") wrote \(path)")
+}

@@ -11,6 +11,11 @@ MainActor.assumeIsolated {
         exit(0)
     }
 
+    if let flag = args.firstIndex(of: "--snapshot-play"), args.indices.contains(flag + 2) {
+        renderPlayerSnapshot(to: args[flag + 1], video: args[flag + 2])
+        exit(0)
+    }
+
     // `Clipbook --icon out.png` renders the app icon (used by scripts/build-app.sh).
     if let flag = args.firstIndex(of: "--icon"), args.indices.contains(flag + 1) {
         renderAppIcon(to: args[flag + 1])
