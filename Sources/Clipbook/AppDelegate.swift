@@ -101,6 +101,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             NSApp.setActivationPolicy(.regular)     // now in ⌘Tab and the Dock
         }
         panelController.show(confirmClear: confirmClear)
+        // ⌘Tab orders apps by when they were last active. The panel alone never activates Clipbook,
+        // so it sank to the back of ⌘Tab; activating it here (and handing focus back on paste/Esc)
+        // keeps it right behind the app you were using.
+        NSApp.activate()
     }
 
     private func togglePanel() {
