@@ -82,10 +82,19 @@ final class ClipbookViewModel: ObservableObject {
         p.seek(to: CMTime(seconds: target, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
     }
 
-    /// ⌘S: writes the selected image to ~/Pictures/Clipbook as a PNG and shows it in Finder.
-    func saveSelectedImage() {
+    /// ⌘S: an image is written to ~/Pictures/Clipbook as a PNG and shown in Finder;
+    /// a video is shown in Finder where it was copied from.
+    func revealSelectedAsFile() {
+        if let item = selectedItem, case .video(let path, _) = item.payload {
+            guard FileManager.default.fileExists(atPath: path) else {
+                flash("\((path as NSString).lastPathComponent) is no longer at the place it was copied from")
+                return
+            }
+            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+            return
+        }
         guard let item = selectedItem, case .image(let png) = item.payload else {
-            flash("Select an image to save it as a file")
+            flash("Select an image or video to get it as a file")
             return
         }
         do {
@@ -159,7 +168,7 @@ final class ClipbookViewModel: ObservableObject {
             return true
         }
         switch keyCode {
-        case 1 where modifiers.contains(.command): saveSelectedImage()      // ⌘S
+        case 1 where modifiers.contains(.command): revealSelectedAsFile()      // ⌘S
         case 49: playSelected()                        // space
         case 123: move(.left)
         case 124: move(.right)

@@ -7,7 +7,7 @@ A macOS clipboard history. Press **⇧⌘V** to open a grid of everything you've
 | ← / → | Move within the row (wraps to the previous/next row at the edges) |
 | ↑ / ↓ | Move one full row |
 | ↩ or double-click | Paste the selected tile into the app you were using |
-| ⌘S | Save the selected image as a PNG file in `~/Pictures/Clipbook` and show it in Finder |
+| ⌘S | Image: save it as a PNG file in `~/Pictures/Clipbook` and show it in Finder. Video: show the original file in Finder |
 | hover | A tooltip lists the commands available for that tile |
 | click | Select a tile (the scroll wheel scrolls the grid) |
 | space | Play the selected video inside Clipbook (space pauses, ←/→ seek 5 s, esc returns to the grid) |

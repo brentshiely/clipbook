@@ -15,6 +15,7 @@ public enum TileActions {
             list.append(TileAction(keys: "⌘S", title: "Save as a PNG file in Pictures/Clipbook"))
         case .video:
             list.append(TileAction(keys: "space", title: "Play here (space pauses, ←/→ seek 5 s)"))
+            list.append(TileAction(keys: "⌘S", title: "Show the video file in Finder"))
         case .text, .files:
             break
         }

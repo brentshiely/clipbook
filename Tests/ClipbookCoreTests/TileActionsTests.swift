@@ -8,10 +8,10 @@ final class TileActionsTests: XCTestCase {
         XCTAssertTrue(tip.contains("Paste"))
     }
 
-    func testVideoTileOffersPlayButNotSave() {
+    func testVideoTileOffersPlayAndShowInFinder() {
         let tip = TileActions.tooltip(for: .video(path: "/tmp/a.mov", thumbnail: Data([0])))
         XCTAssertTrue(tip.contains("space"))
-        XCTAssertFalse(tip.contains("⌘S"))
+        XCTAssertTrue(tip.contains("⌘S   Show the video file in Finder"))
     }
 
     func testEveryTileCanBePastedAndDeleted() {

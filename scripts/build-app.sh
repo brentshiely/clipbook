@@ -1,5 +1,6 @@
 #!/bin/zsh
-# Builds a release Clipbook.app into build/ (menu-bar only, ad-hoc signed).
+# Builds a release Clipbook.app into build/ (menu-bar only). Signed with your Apple Development
+# certificate if you have one, so the Accessibility permission survives rebuilds; ad-hoc otherwise.
 # Usage: scripts/build-app.sh [--install]   # --install copies to ~/Applications
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -40,7 +41,11 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
-codesign --force --sign - --identifier local.clipbook "$APP"
+# macOS ties the Accessibility grant to the signature. Ad-hoc signatures change on every build,
+# which makes macOS ask again; a real certificate keeps the grant across rebuilds.
+IDENTITY="$(security find-identity -v -p codesigning | awk '/"Apple Development/ { print $2; exit }')"
+codesign --force --sign "${IDENTITY:--}" --identifier local.clipbook "$APP"
+[[ -n "$IDENTITY" ]] || echo "No Apple Development certificate found; signed ad-hoc (Accessibility must be re-approved after each rebuild)."
 echo "Built $APP"
 
 if [[ "${1:-}" == "--install" ]]; then
