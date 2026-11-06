@@ -10,10 +10,26 @@ A macOS clipboard history. Press **⇧⌘V** to open a grid of everything you've
 | ⌘S | Image: save it as a PNG file in `~/Pictures/Clipbook` and show it in Finder. Video: show the original file in Finder |
 | hover | A tooltip lists the commands available for that tile |
 | click | Select a tile (the scroll wheel scrolls the grid) |
+| E | Mark up the selected image with a red box, arrow or text (see below) |
 | space | Play the selected video inside Clipbook (space pauses, ←/→ seek 5 s, esc returns to the grid) |
 | ⌫ | Delete the selected tile permanently |
 | ⌘⌫ | Clear the whole Clipbook (asks to confirm) |
 | esc | Close |
+
+## Marking up an image
+
+Select an image tile and press **E**. The panel becomes an editor in one house style: thick red lines and bold red text with a white outline, sized to the image.
+
+| Key | Action |
+|---|---|
+| R / A / T | Rectangle, arrow, or text tool (rectangle is the default) |
+| drag | Draw a rectangle or arrow; with T, click where the text goes and type |
+| click | Select a mark (click text with T to edit it) |
+| ←↑↓→ | Nudge the selected mark (⇧ for bigger steps) |
+| ⌫ | Delete the selected mark |
+| ⌘Z | Undo |
+| ↩ | Done: the marked-up copy becomes the newest tile and goes on the clipboard (↩ again pastes it). The original is kept |
+| esc | Cancel (press twice if you've drawn something) |
 
 Scrolling past row 3 loads older history — there's no 100-item cap and no retention limit until you clear it.
 

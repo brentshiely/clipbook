@@ -13,9 +13,16 @@ final class ClipbookViewModel: ObservableObject {
     @Published private(set) var player: AVPlayer?
     @Published private(set) var playbackError: String?
     @Published private(set) var notice: String?
+    /// The image being marked up (E on an image tile); kept if the panel closes mid-edit.
+    @Published var markup: MarkupSession?
+    private(set) var markupPNG: Data?
+    private(set) var markupImage: NSImage?
+    private var discardArmed = false
 
     var onPaste: ((ClipItem) -> Void)?
     var onClose: (() -> Void)?
+    /// Puts a finished marked-up image on the clipboard.
+    var onCopyImage: ((Data) -> Void)?
 
     private let store: ClipStore
     private var hasMore = true
@@ -106,6 +113,86 @@ final class ClipbookViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Markup
+
+    /// E: turns the panel into an editor for the selected image.
+    func startMarkup() {
+        guard let item = selectedItem, case .image(let png) = item.payload,
+              let size = MarkupRenderer.pixelSize(of: png), let image = NSImage(data: png) else {
+            flash("Select an image to mark it up")
+            return
+        }
+        markupPNG = png
+        markupImage = image
+        discardArmed = false
+        markup = MarkupSession(imageSize: size)
+    }
+
+    /// ↩: saves the marked-up copy as the newest tile and puts it on the clipboard. The original stays.
+    func finishMarkup() {
+        guard var session = markup, let png = markupPNG else { return }
+        session.finishTyping()
+        guard session.hasMarks else { flash("Draw something first, or press esc to go back"); return }
+        guard let output = MarkupRenderer.render(png: png, marks: session.marks) else {
+            flash("Could not render the image")
+            return
+        }
+        do { try store.insert(.image(output)) } catch { NSLog("Clipbook: insert failed: \(error)") }
+        onCopyImage?(output)
+        endMarkup()
+        reload()
+        flash("Marked-up copy is on the clipboard. ↩ pastes it")
+    }
+
+    private func endMarkup() {
+        markup = nil
+        markupPNG = nil
+        markupImage = nil
+        discardArmed = false
+    }
+
+    private func handleMarkupKey(keyCode: UInt16, modifiers: NSEvent.ModifierFlags, characters: String?) {
+        let command = modifiers.contains(.command)
+        let escape = keyCode == 53
+        if !escape { discardArmed = false }
+
+        if markup?.typing != nil {
+            switch keyCode {
+            case 36, 76, 53: markup?.finishTyping()             // return / enter / esc end the text
+            case 51: markup?.deleteBackward()
+            case 6 where command: markup?.undo()               // ⌘Z
+            default:
+                if !command, let text = characters, !text.isEmpty,
+                   text.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) && $0.value < 0xF700 }) {
+                    markup?.type(text)
+                }
+            }
+            return
+        }
+
+        let step = max(1, ((markup?.style.lineWidth ?? 4) / 2).rounded()) * (modifiers.contains(.shift) ? 8 : 1)
+        switch (keyCode, characters?.lowercased()) {
+        case (6, _) where command: markup?.undo()
+        case (_, "r") where !command: markup?.tool = .rectangle
+        case (_, "a") where !command: markup?.tool = .arrow
+        case (_, "t") where !command: markup?.tool = .text
+        case (51, _), (117, _): markup?.deleteSelected()
+        case (123, _): markup?.nudge(dx: -step, dy: 0)
+        case (124, _): markup?.nudge(dx: step, dy: 0)
+        case (125, _): markup?.nudge(dx: 0, dy: step)
+        case (126, _): markup?.nudge(dx: 0, dy: -step)
+        case (36, _), (76, _): finishMarkup()
+        case (53, _):
+            if markup?.hasMarks == true && !discardArmed {
+                discardArmed = true
+                flash("Press esc again to discard your markup")
+            } else {
+                endMarkup()
+            }
+        default: break
+        }
+    }
+
     private func flash(_ message: String) {
         notice = message
         Task { @MainActor [weak self] in
@@ -116,13 +203,13 @@ final class ClipbookViewModel: ObservableObject {
 
     /// Mouse: one click selects, a double click pastes.
     func click(index: Int) {
-        guard !isPlaying, !confirmingClear else { return }
+        guard !isPlaying, !confirmingClear, markup == nil else { return }
         nav.select(index)
         if hasMore && nav.isNearEnd() { loadMore() }
     }
 
     func doubleClick(index: Int) {
-        guard !isPlaying, !confirmingClear else { return }
+        guard !isPlaying, !confirmingClear, markup == nil else { return }
         nav.select(index)
         pasteSelected()
     }
@@ -147,7 +234,7 @@ final class ClipbookViewModel: ObservableObject {
     }
 
     /// Returns true when the key was handled.
-    func handleKey(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> Bool {
+    func handleKey(keyCode: UInt16, modifiers: NSEvent.ModifierFlags, characters: String? = nil) -> Bool {
         if confirmingClear {
             switch keyCode {
             case 36, 76: clearAll()               // return / enter
@@ -155,6 +242,10 @@ final class ClipbookViewModel: ObservableObject {
             default: break
             }
             return true                            // swallow everything while the dialog is up
+        }
+        if markup != nil {
+            handleMarkupKey(keyCode: keyCode, modifiers: modifiers, characters: characters)
+            return true                            // the editor owns the keyboard
         }
         if isPlaying {
             switch keyCode {
@@ -170,6 +261,7 @@ final class ClipbookViewModel: ObservableObject {
         switch keyCode {
         case 1 where modifiers.contains(.command): revealSelectedAsFile()      // ⌘S
         case 49: playSelected()                        // space
+        case 14 where !modifiers.contains(.command): startMarkup()          // E
         case 123: move(.left)
         case 124: move(.right)
         case 125: move(.down)

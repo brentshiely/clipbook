@@ -12,6 +12,7 @@ public enum TileActions {
         var list: [TileAction] = []
         switch payload {
         case .image:
+            list.append(TileAction(keys: "E", title: "Mark up with a red box, arrow or text"))
             list.append(TileAction(keys: "⌘S", title: "Save as a PNG file in Pictures/Clipbook"))
         case .video:
             list.append(TileAction(keys: "space", title: "Play here (space pauses, ←/→ seek 5 s)"))

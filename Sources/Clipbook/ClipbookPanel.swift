@@ -54,7 +54,7 @@ final class ClipbookPanelController {
         panel.setContentSize(host.fittingSize)
 
         panel.keyHandler = { [weak self] event in
-            self?.model.handleKey(keyCode: event.keyCode, modifiers: event.modifierFlags) ?? false
+            self?.model.handleKey(keyCode: event.keyCode, modifiers: event.modifierFlags, characters: event.characters) ?? false
         }
         panel.onResignKey = { [weak self] in self?.hide() }
         model.onClose = { [weak self] in self?.hide() }

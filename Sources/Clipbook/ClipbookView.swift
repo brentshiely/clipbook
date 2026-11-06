@@ -168,6 +168,7 @@ struct ClipbookView: View {
         .background(RoundedRectangle(cornerRadius: 16).fill(Color(nsColor: .windowBackgroundColor)))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.15)))
         .overlay { if model.isPlaying { playerOverlay } }
+        .overlay { if model.markup != nil { MarkupEditorView(model: model) } }
         .overlay(alignment: .bottom) {
             if let notice = model.notice {
                 Text(notice)
@@ -189,7 +190,7 @@ struct ClipbookView: View {
             Spacer()
             Text(model.isPlaying
                  ? "space pause   ←→ seek 5s   ↩ paste   esc back"
-                 : "←↑↓→ or click   space play video   ⌘S save image   ↩ or double-click paste   ⌫ delete   ⌘⌫ clear all   esc close")
+                 : "←↑↓→ or click   space play video   E mark up image   ⌘S save   ↩ or double-click paste   ⌫ delete   ⌘⌫ clear all   esc close")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .frame(width: gridWidth)

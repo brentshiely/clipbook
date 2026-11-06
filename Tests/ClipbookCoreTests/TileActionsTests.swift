@@ -2,8 +2,9 @@ import XCTest
 @testable import ClipbookCore
 
 final class TileActionsTests: XCTestCase {
-    func testImageTileOffersSave() {
+    func testImageTileOffersMarkupAndSave() {
         let tip = TileActions.tooltip(for: .image(Data([0])))
+        XCTAssertTrue(tip.contains("E   Mark up"))
         XCTAssertTrue(tip.contains("⌘S"))
         XCTAssertTrue(tip.contains("Paste"))
     }

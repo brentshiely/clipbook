@@ -34,6 +34,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         model.onPaste = { [weak self] item in self?.paste(item) }
 
         model.onClose = { [weak self] in self?.dismiss() }
+        model.onCopyImage = { [weak self] png in
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            pb.setData(png, forType: .png)
+            self?.watcher.ignoreCurrentContents()   // already saved as the newest tile
+        }
 
         hotKey = HotKey(keyCode: kVK_ANSI_V, modifiers: cmdKey | shiftKey) { [weak self] in
             Task { @MainActor in self?.togglePanel() }

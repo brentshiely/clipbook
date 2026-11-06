@@ -54,6 +54,52 @@ func renderSnapshot(to path: String, rows: Int) {
     print("wrote \(path) (\(Int(host.bounds.width))x\(Int(host.bounds.height)), tile \(Int(tile)))")
 }
 
+/// `Clipbook --snapshot-markup panel.png result.png`: opens the editor on a sample screenshot, draws a
+/// rectangle, an arrow and text through the same calls the mouse and keyboard make, and renders both
+/// the editor and the saved image.
+@MainActor
+func renderMarkupSnapshot(to path: String, result: String) {
+    let dbPath = NSTemporaryDirectory() + "clipbook-snapshot-\(UUID().uuidString).sqlite"
+    defer { try? FileManager.default.removeItem(atPath: dbPath) }
+    let store = try! ClipStore(path: dbPath)
+    guard let png = sampleScreenshotPNG(hue: 0.6) else { exit(1) }
+    _ = try? store.insert(.image(png), at: Date(timeIntervalSince1970: 1))
+    let model = ClipbookViewModel(store: store)
+    model.reload()
+    model.startMarkup()
+    guard let size = model.markup?.imageSize else { print("markup did not start"); exit(1) }
+    let w = size.width, h = size.height
+    model.markup?.endDrag(from: CGPoint(x: w * 0.04, y: h * 0.12), to: CGPoint(x: w * 0.48, y: h * 0.86), tolerance: 8)
+    model.markup?.tool = .arrow
+    model.markup?.endDrag(from: CGPoint(x: w * 0.8, y: h * 0.35), to: CGPoint(x: w * 0.93, y: h * 0.86), tolerance: 8)
+    _ = model.handleKey(keyCode: 17, modifiers: [], characters: "t")
+    model.markup?.click(at: CGPoint(x: w * 0.55, y: h * 0.25), tolerance: 8)
+    for ch in "Look here" { _ = model.handleKey(keyCode: 0, modifiers: [], characters: String(ch)) }
+
+    let tile = ClipbookPanelController.tileSize(for: NSScreen.main)
+    let host = NSHostingView(rootView: ClipbookView(model: model, tileSize: tile))
+    let window = NSWindow(contentRect: NSRect(origin: .zero, size: host.fittingSize), styleMask: [.borderless],
+                          backing: .buffered, defer: false)
+    window.contentView = host
+    window.orderFrontRegardless()
+    RunLoop.main.run(until: Date().addingTimeInterval(0.5))
+    if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+        host.cacheDisplay(in: host.bounds, to: rep)
+        try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+    }
+    let marks = model.markup?.marks.count ?? 0
+    var saved: Data?
+    model.onCopyImage = { saved = $0 }
+    _ = model.handleKey(keyCode: 36, modifiers: [], characters: "\r")     // ↩ ends the text
+    _ = model.handleKey(keyCode: 36, modifiers: [], characters: "\r")     // ↩ saves
+    try? saved?.write(to: URL(fileURLWithPath: result))
+    let newest = model.items.first.map { item -> String in
+        if case .image(let d) = item.payload { return d == saved ? "the marked-up image" : "a different image" }
+        return "not an image"
+    } ?? "nothing"
+    print("marks=\(marks) editorOpen=\(model.markup != nil) items=\(model.items.count) newest=\(newest) wrote \(path) and \(result)")
+}
+
 /// `Clipbook --snapshot-play out.png video.mov`: opens the in-panel player on a real file and renders it.
 @MainActor
 func renderPlayerSnapshot(to path: String, video: String) {
