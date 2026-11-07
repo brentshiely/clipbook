@@ -11,6 +11,11 @@ MainActor.assumeIsolated {
         exit(0)
     }
 
+    if let flag = args.firstIndex(of: "--snapshot-multi"), args.indices.contains(flag + 1) {
+        renderSnapshot(to: args[flag + 1], rows: GridNavigation.visibleRows, multiSelect: true)
+        exit(0)
+    }
+
     if let flag = args.firstIndex(of: "--snapshot-markup"), args.indices.contains(flag + 2) {
         renderMarkupSnapshot(to: args[flag + 1], result: args[flag + 2])
         exit(0)

@@ -10,8 +10,13 @@ public struct GridNavigation: Equatable {
     public static let visibleRows = 3
 
     public let columns: Int
+    /// The cursor: the tile arrows move from and single-tile actions apply to.
     public private(set) var selected: Int = 0
     public var count: Int
+    /// Where a ⇧-extended range started; nil when no range is being extended.
+    public private(set) var anchor: Int?
+    /// Tiles picked with ⌘-click, kept alongside any range.
+    public private(set) var picked: Set<Int> = []
 
     public init(columns: Int = GridNavigation.defaultColumns, count: Int) {
         self.columns = columns
@@ -21,7 +26,51 @@ public struct GridNavigation: Equatable {
     public var row: Int { selected / columns }
     public var column: Int { selected % columns }
 
+    /// A plain arrow moves the cursor and drops any multi-selection.
     public mutating func move(_ direction: GridMove) {
+        clearMultiSelection()
+        step(direction)
+    }
+
+    /// ⇧+arrow: grows (or shrinks) a contiguous range, in reading order, from where it started.
+    public mutating func extend(_ direction: GridMove) {
+        if anchor == nil { anchor = selected }
+        step(direction)
+    }
+
+    /// ⇧-click: the range runs from where it started to this tile.
+    public mutating func extend(to index: Int) {
+        guard index >= 0 && index < count else { return }
+        if anchor == nil { anchor = selected }
+        selected = index
+    }
+
+    /// ⌘-click: adds or removes one tile, keeping everything else selected.
+    public mutating func toggle(_ index: Int) {
+        guard index >= 0 && index < count else { return }
+        var set = selection
+        if set.contains(index) { set.remove(index) } else { set.insert(index) }
+        picked = set
+        anchor = nil
+        selected = index
+    }
+
+    /// Every selected tile: the range plus ⌘-picked tiles, or just the cursor.
+    public var selection: Set<Int> {
+        var set = picked
+        if let anchor { set.formUnion(min(anchor, selected)...max(anchor, selected)) }
+        if set.isEmpty { set.insert(selected) }
+        return set.filter { $0 < count }
+    }
+
+    public var isMultiSelecting: Bool { selection.count > 1 }
+
+    public mutating func clearMultiSelection() {
+        anchor = nil
+        picked = []
+    }
+
+    private mutating func step(_ direction: GridMove) {
         guard count > 0 else { return }
         switch direction {
         case .left:
@@ -42,13 +91,21 @@ public struct GridNavigation: Equatable {
 
     /// Mouse selection: jump straight to a tile; out-of-range indexes are ignored.
     public mutating func select(_ index: Int) {
-        if index >= 0 && index < count { selected = index }
+        guard index >= 0 && index < count else { return }
+        clearMultiSelection()
+        selected = index
     }
 
-    public mutating func reset() { selected = 0 }
+    public mutating func reset() {
+        clearMultiSelection()
+        selected = 0
+    }
 
     /// After items are removed: keep the selection on a real tile (the last one if it was the end).
-    public mutating func clampToCount() { selected = count > 0 ? min(selected, count - 1) : 0 }
+    public mutating func clampToCount() {
+        clearMultiSelection()
+        selected = count > 0 ? min(selected, count - 1) : 0
+    }
 
     /// Items in the rows below the selected row, out of `total` items overall (for the footer indicator).
     public func itemsBelow(total: Int) -> Int { max(0, total - (row + 1) * columns) }

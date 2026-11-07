@@ -54,6 +54,8 @@ struct TileView: View {
     let item: ClipItem
     let size: CGFloat
     let selected: Bool
+    /// Part of a multi-selection: outlined and badged with its paste position.
+    var order: Int? = nil
 
     var body: some View {
         content
@@ -62,8 +64,23 @@ struct TileView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(selected ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: selected ? 4 : 1)
+                    .stroke(selected || order != nil ? Color.accentColor : Color.primary.opacity(0.12),
+                            lineWidth: selected || order != nil ? 4 : 1)
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12).fill(Color.accentColor.opacity(order != nil ? 0.18 : 0))
+                    .allowsHitTesting(false)
+            )
+            .overlay(alignment: .topTrailing) {
+                if let order {
+                    Text("\(order)")
+                        .font(.system(size: max(12, size * 0.1), weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(minWidth: size * 0.17, minHeight: size * 0.17)
+                        .background(Circle().fill(Color.accentColor))
+                        .padding(6)
+                }
+            }
     }
 
     private var background: Color {
@@ -180,6 +197,7 @@ struct ClipbookView: View {
             }
         }
         .overlay { if model.confirmingClear { clearDialog } }
+        .overlay { if model.confirmingDelete { deleteDialog } }
     }
 
     private var header: some View {
@@ -190,7 +208,7 @@ struct ClipbookView: View {
             Spacer()
             Text(model.isPlaying
                  ? "space pause   ←→ seek 5s   ↩ paste   esc back"
-                 : "←↑↓→ or click   space play video   E mark up image   ⌘S save   ↩ or double-click paste   ⌫ delete   ⌘⌫ clear all   esc close")
+                 : "←↑↓→ or click   ⇧ select several   space play video   E mark up image   ⌘S save   ↩ or double-click paste   ⌫ delete   ⌘⌫ clear all   esc close")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .frame(width: gridWidth)
@@ -202,8 +220,13 @@ struct ClipbookView: View {
     private var footer: some View {
         let below = model.nav.itemsBelow(total: model.totalCount)
         return HStack {
-            Text("Item \(model.nav.selected + 1) of \(model.totalCount.formatted())")
-                .foregroundStyle(.secondary)
+            if model.nav.isMultiSelecting {
+                Text("\(model.nav.selection.count) selected   ↩ copy all, oldest first   esc clear")
+                    .foregroundStyle(Color.accentColor)
+            } else {
+                Text("Item \(model.nav.selected + 1) of \(model.totalCount.formatted())")
+                    .foregroundStyle(.secondary)
+            }
             Spacer()
             if below > 0 {
                 Label("\(below.formatted()) more below", systemImage: "arrow.down")
@@ -214,7 +237,7 @@ struct ClipbookView: View {
         }
         .font(.callout.weight(.medium))
         .frame(width: gridWidth, height: 18)
-        .opacity(hasMoreThanOneScreen ? 1 : 0)
+        .opacity(hasMoreThanOneScreen || model.nav.isMultiSelecting ? 1 : 0)
     }
 
     private var grid: some View {
@@ -224,12 +247,13 @@ struct ClipbookView: View {
                     columns: Array(repeating: GridItem(.fixed(tileSize), spacing: Self.spacing), count: columns),
                     spacing: Self.spacing
                 ) {
+                    let order = pasteOrder
                     ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
-                        TileView(item: item, size: tileSize, selected: index == model.nav.selected)
+                        TileView(item: item, size: tileSize, selected: index == model.nav.selected, order: order[index])
                             .contentShape(Rectangle())
                             .help(TileActions.tooltip(for: item.payload))
                             .onTapGesture(count: 2) { model.doubleClick(index: index) }
-                            .onTapGesture { model.click(index: index) }
+                            .onTapGesture { model.click(index: index, modifiers: NSEvent.modifierFlags) }
                     }
                 }
                 .padding(Self.gridPadding)
@@ -238,6 +262,13 @@ struct ClipbookView: View {
                 if let id = model.selectedItem?.id { proxy.scrollTo(id) }
             }
         }
+    }
+
+    /// Badge numbers for a multi-selection: 1 is the oldest, which pastes first.
+    private var pasteOrder: [Int: Int] {
+        guard model.nav.isMultiSelecting else { return [:] }
+        let oldestFirst = model.nav.selection.sorted(by: >)       // higher index = copied earlier
+        return Dictionary(uniqueKeysWithValues: oldestFirst.enumerated().map { ($1, $0 + 1) })
     }
 
     private var playerOverlay: some View {
@@ -256,6 +287,19 @@ struct ClipbookView: View {
                 .foregroundStyle(.white)
                 .padding(40)
             }
+        }
+    }
+
+    private var deleteDialog: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16).fill(.black.opacity(0.45))
+            VStack(spacing: 10) {
+                Text("Delete \(model.nav.selection.count) items?").font(.title3.bold())
+                Text("This can't be undone.").foregroundStyle(.secondary)
+                Text("↩ Delete     esc Cancel").font(.callout)
+            }
+            .padding(24)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color(nsColor: .windowBackgroundColor)))
         }
     }
 

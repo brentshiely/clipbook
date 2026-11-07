@@ -19,7 +19,7 @@ private func sampleScreenshotPNG(hue: CGFloat) -> Data? {
 }
 
 @MainActor
-func renderSnapshot(to path: String, rows: Int) {
+func renderSnapshot(to path: String, rows: Int, multiSelect: Bool = false) {
     let dbPath = NSTemporaryDirectory() + "clipbook-snapshot-\(UUID().uuidString).sqlite"
     defer { try? FileManager.default.removeItem(atPath: dbPath) }
     let store = try! ClipStore(path: dbPath)
@@ -43,6 +43,11 @@ func renderSnapshot(to path: String, rows: Int) {
 
     let model = ClipbookViewModel(store: store)
     model.reload()
+    if multiSelect {                       // ⇧→ ⇧→ ⇧↓: tiles 0–10, as the keyboard would
+        for (code, flags) in [(124, NSEvent.ModifierFlags.shift), (124, .shift), (125, .shift)] {
+            _ = model.handleKey(keyCode: UInt16(code), modifiers: flags)
+        }
+    }
     let tile = ClipbookPanelController.tileSize(for: NSScreen.main)
     let view = ClipbookView(model: model, tileSize: tile)
     let host = NSHostingView(rootView: view)

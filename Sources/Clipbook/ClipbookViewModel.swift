@@ -10,6 +10,8 @@ final class ClipbookViewModel: ObservableObject {
     @Published private(set) var nav = GridNavigation(count: 0)
     @Published private(set) var totalCount = 0
     @Published var confirmingClear = false
+    /// ⌫ with several tiles selected asks first; deletes are permanent.
+    @Published var confirmingDelete = false
     @Published private(set) var player: AVPlayer?
     @Published private(set) var playbackError: String?
     @Published private(set) var notice: String?
@@ -20,6 +22,8 @@ final class ClipbookViewModel: ObservableObject {
     private var discardArmed = false
 
     var onPaste: ((ClipItem) -> Void)?
+    /// ↩ with several tiles selected: put them all on the clipboard (oldest first), no paste.
+    var onCopyMany: (([ClipItem]) -> Void)?
     var onClose: (() -> Void)?
     /// Puts a finished marked-up image on the clipboard.
     var onCopyImage: ((Data) -> Void)?
@@ -40,6 +44,7 @@ final class ClipbookViewModel: ObservableObject {
         nav = GridNavigation(count: items.count)
         totalCount = (try? store.count()) ?? items.count
         confirmingClear = false
+        confirmingDelete = false
         notice = nil
         stopPlaying()
     }
@@ -47,6 +52,15 @@ final class ClipbookViewModel: ObservableObject {
     func move(_ direction: GridMove) {
         nav.move(direction)
         if hasMore && nav.isNearEnd() { loadMore() }
+    }
+
+    func extend(_ direction: GridMove) {
+        nav.extend(direction)
+        if hasMore && nav.isNearEnd() { loadMore() }
+    }
+
+    var selectedItems: [ClipItem] {
+        nav.selection.sorted().compactMap { items.indices.contains($0) ? items[$0] : nil }
     }
 
     /// Plays the selected video inside the panel. The saved thumbnail stays in the grid;
@@ -201,30 +215,43 @@ final class ClipbookViewModel: ObservableObject {
         }
     }
 
-    /// Mouse: one click selects, a double click pastes.
-    func click(index: Int) {
-        guard !isPlaying, !confirmingClear, markup == nil else { return }
-        nav.select(index)
+    /// Mouse: one click selects (⇧ extends, ⌘ adds or removes), a double click pastes.
+    func click(index: Int, modifiers: NSEvent.ModifierFlags = []) {
+        guard !isPlaying, !confirmingClear, !confirmingDelete, markup == nil else { return }
+        if modifiers.contains(.shift) { nav.extend(to: index) }
+        else if modifiers.contains(.command) { nav.toggle(index) }
+        else { nav.select(index) }
         if hasMore && nav.isNearEnd() { loadMore() }
     }
 
     func doubleClick(index: Int) {
-        guard !isPlaying, !confirmingClear, markup == nil else { return }
+        guard !isPlaying, !confirmingClear, !confirmingDelete, markup == nil else { return }
         nav.select(index)
         pasteSelected()
     }
 
+    /// ↩: one tile pastes; several go on the clipboard together, oldest first.
     func pasteSelected() {
-        if let item = selectedItem { onPaste?(item) }
+        if nav.isMultiSelecting {
+            onCopyMany?(selectedItems)
+        } else if let item = selectedItem {
+            onPaste?(item)
+        }
     }
 
-    /// ⌫ removes the selected tile for good (the row is overwritten in the database).
+    /// ⌫ removes the selected tiles for good (rows are overwritten in the database).
     func deleteSelected() {
-        guard let item = selectedItem else { return }
-        do { try store.delete(id: item.id) } catch { NSLog("Clipbook: delete failed: \(error)"); return }
-        items.removeAll { $0.id == item.id }
-        totalCount = max(0, totalCount - 1)
+        let doomed = selectedItems
+        guard !doomed.isEmpty else { return }
+        var removed = Set<Int64>()
+        for item in doomed {
+            do { try store.delete(id: item.id); removed.insert(item.id) } catch { NSLog("Clipbook: delete failed: \(error)") }
+        }
+        let firstIndex = nav.selection.min() ?? nav.selected
+        items.removeAll { removed.contains($0.id) }
+        totalCount = max(0, totalCount - removed.count)
         nav.count = items.count
+        nav.select(min(firstIndex, max(0, items.count - 1)))
         nav.clampToCount()
     }
 
@@ -242,6 +269,14 @@ final class ClipbookViewModel: ObservableObject {
             default: break
             }
             return true                            // swallow everything while the dialog is up
+        }
+        if confirmingDelete {
+            switch keyCode {
+            case 36, 76: confirmingDelete = false; deleteSelected()
+            case 53: confirmingDelete = false
+            default: break
+            }
+            return true
         }
         if markup != nil {
             handleMarkupKey(keyCode: keyCode, modifiers: modifiers, characters: characters)
@@ -262,14 +297,15 @@ final class ClipbookViewModel: ObservableObject {
         case 1 where modifiers.contains(.command): revealSelectedAsFile()      // ⌘S
         case 49: playSelected()                        // space
         case 14 where !modifiers.contains(.command): startMarkup()          // E
-        case 123: move(.left)
-        case 124: move(.right)
-        case 125: move(.down)
-        case 126: move(.up)
+        case 123: modifiers.contains(.shift) ? extend(.left) : move(.left)
+        case 124: modifiers.contains(.shift) ? extend(.right) : move(.right)
+        case 125: modifiers.contains(.shift) ? extend(.down) : move(.down)
+        case 126: modifiers.contains(.shift) ? extend(.up) : move(.up)
         case 36, 76: pasteSelected()
-        case 53: onClose?()
+        case 53: nav.isMultiSelecting ? nav.clearMultiSelection() : onClose?()
         case 51 where modifiers.contains(.command): if totalCount > 0 { confirmingClear = true }
-        case 51, 117: deleteSelected()                  // delete / forward delete
+        case 51, 117:                                   // delete / forward delete
+            if nav.isMultiSelecting { confirmingDelete = true } else { deleteSelected() }
         default: return false
         }
         return true

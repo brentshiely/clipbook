@@ -7,14 +7,17 @@ A macOS clipboard history. Press **⇧⌘V** to open a grid of everything you've
 | ← / → | Move within the row (wraps to the previous/next row at the edges) |
 | ↑ / ↓ | Move one full row |
 | ↩ or double-click | Paste the selected tile into the app you were using |
+| ⇧ + arrows | Select several tiles: a range in reading order from where you started (⇧↓ adds a whole row) |
+| ⇧-click / ⌘-click | Extend the range to a tile / add or remove a single tile |
+| ↩ with several selected | Copy them all to the clipboard, **oldest first** (the order you copied them), and close. ⌘V pastes them. Images go on as both pictures and PNG files; all-text selections become one block of text |
 | ⌘S | Image: save it as a PNG file in `~/Pictures/Clipbook` and show it in Finder. Video: show the original file in Finder |
 | hover | A tooltip lists the commands available for that tile |
 | click | Select a tile (the scroll wheel scrolls the grid) |
 | E | Mark up the selected image with a red box, arrow or text (see below) |
 | space | Play the selected video inside Clipbook (space pauses, ←/→ seek 5 s, esc returns to the grid) |
-| ⌫ | Delete the selected tile permanently |
+| ⌫ | Delete the selected tile permanently (with several selected, asks first) |
 | ⌘⌫ | Clear the whole Clipbook (asks to confirm) |
-| esc | Close |
+| esc | Clear a multi-selection, otherwise close |
 
 ## Marking up an image
 

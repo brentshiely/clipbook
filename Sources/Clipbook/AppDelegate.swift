@@ -34,6 +34,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         model.onPaste = { [weak self] item in self?.paste(item) }
 
         model.onClose = { [weak self] in self?.dismiss() }
+        model.onCopyMany = { [weak self] items in
+            guard let self else { return }
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            pb.writeObjects(MultiCopy.pasteboardItems(for: items))
+            self.watcher.ignoreCurrentContents()   // they're already in history
+            self.dismiss()                          // back to your app; ⌘V when you're ready
+        }
         model.onCopyImage = { [weak self] png in
             let pb = NSPasteboard.general
             pb.clearContents()
